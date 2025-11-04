@@ -94,6 +94,27 @@ function makeStats() {
   return base;
 }
 
+function characterPrompt(c) {
+  return [
+    `Portrait of a Level ${c.level} ${c.race} ${c.class} adventurer`,
+    `background: ${c.background}, alignment: ${c.alignment}`,
+    `traits: ${c.traits.join(", ")}`,
+    "fantasy, Dungeons & Dragons style, dramatic lighting, detailed, character concept art, 4k, artstation, trending"
+  ].join(", ");
+}
+
+async function fetchImageForCharacter(character) {
+  const base = import.meta.env.VITE_BACKEND_URL || "";
+  const res = await fetch(`${base}/generate-image`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: characterPrompt(character) }),
+  });
+  if (!res.ok) throw new Error("Failed to generate image");
+  const data = await res.json();
+  return data.url;
+}
+
 function generateCharacter(filters) {
   const races = [
     "Human","Elf","Dwarf","Halfling","Gnome","Half-Orc","Half-Elf","Tiefling","Dragonborn","Aasimar",
@@ -129,6 +150,7 @@ function generateCharacter(filters) {
     skills,
     traits,
     hook,
+    imageUrl: null,
     createdAt: Date.now(),
   };
 }
@@ -136,17 +158,45 @@ function generateCharacter(filters) {
 export default function App() {
   const [current, setCurrent] = useState(null);
   const [history, setHistory] = useState([]);
+  const [loadingImage, setLoadingImage] = useState(false);
 
-  const handleGenerate = (filters) => {
+  const handleGenerate = async (filters) => {
     const c = generateCharacter(filters);
     setCurrent(c);
     setHistory((h) => [c, ...h].slice(0, 20));
+
+    // Generate image in background
+    try {
+      setLoadingImage(true);
+      const url = await fetchImageForCharacter(c);
+      setCurrent((prev) => prev && prev.id === c.id ? { ...prev, imageUrl: url } : prev);
+      setHistory((h) => h.map((it) => (it.id === c.id ? { ...it, imageUrl: url } : it)));
+    } catch (e) {
+      // silently ignore for now
+      console.warn(e);
+    } finally {
+      setLoadingImage(false);
+    }
+  };
+
+  const regenerateImage = async () => {
+    if (!current) return;
+    try {
+      setLoadingImage(true);
+      const url = await fetchImageForCharacter(current);
+      setCurrent((prev) => (prev ? { ...prev, imageUrl: url } : prev));
+      setHistory((h) => h.map((it) => (it.id === current.id ? { ...it, imageUrl: url } : it)));
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setLoadingImage(false);
+    }
   };
 
   const hasHistory = useMemo(() => history.length > 0, [history]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-b from-black to-indigo-950/20">
       <Header />
 
       <main className="max-w-6xl mx-auto px-4 md:px-8 py-8 space-y-6">
@@ -154,7 +204,7 @@ export default function App() {
 
         <div className="grid md:grid-cols-3 gap-6">
           <div className="md:col-span-2">
-            <CharacterCard character={current} />
+            <CharacterCard character={current} onGenerateImage={regenerateImage} loadingImage={loadingImage} />
           </div>
           <div>
             <HistoryList
@@ -172,7 +222,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="py-8 text-center text-sm text-gray-600">
+      <footer className="py-8 text-center text-sm text-gray-400">
         Built for adventurers. Roll high and have fun!
       </footer>
     </div>

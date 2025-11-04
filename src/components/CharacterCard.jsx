@@ -1,4 +1,4 @@
-import { User, Swords, Shield, Scroll } from "lucide-react";
+import { User, Shield, Scroll, Image as ImageIcon } from "lucide-react";
 
 function StatBadge({ label, value }) {
   return (
@@ -9,14 +9,14 @@ function StatBadge({ label, value }) {
   );
 }
 
-export default function CharacterCard({ character }) {
+export default function CharacterCard({ character, onGenerateImage, loadingImage }) {
   if (!character) {
     return (
       <div className="w-full text-center text-gray-600 py-10">No character yet. Click Generate to forge a hero!</div>
     );
   }
 
-  const { name, race, class: clazz, background, alignment, level, stats, traits, skills } = character;
+  const { name, race, class: clazz, background, alignment, level, stats, traits, skills, imageUrl } = character;
 
   return (
     <section className="w-full bg-white rounded-xl border border-black/5 shadow p-6">
@@ -32,7 +32,26 @@ export default function CharacterCard({ character }) {
             <p className="text-gray-600">Level {level} {race} {clazz} • {background} • {alignment}</p>
           </div>
         </div>
+
+        <button
+          onClick={onGenerateImage}
+          disabled={loadingImage}
+          className="inline-flex items-center gap-2 px-3 h-10 rounded-md border border-gray-300 text-gray-800 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <ImageIcon className="w-4 h-4" /> {imageUrl ? "Regenerate Image" : "Generate Image"}
+        </button>
       </div>
+
+      {imageUrl && (
+        <div className="mt-4 aspect-[16/10] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+        </div>
+      )}
+
+      {loadingImage && (
+        <div className="mt-4 aspect-[16/10] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-100 animate-pulse" />
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-6">
         {Object.entries(stats).map(([k, v]) => (
@@ -43,7 +62,7 @@ export default function CharacterCard({ character }) {
       <div className="grid md:grid-cols-2 gap-4 mt-6">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-2 text-gray-800 font-semibold mb-2">
-            <Swords className="w-4 h-4 text-indigo-600" /> Skills
+            <Shield className="w-4 h-4 text-indigo-600" /> Skills
           </div>
           <div className="flex flex-wrap gap-2">
             {skills.map((s) => (
